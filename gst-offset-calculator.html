@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GST Offset Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1f2e;--ink2:#4a5568;--ink3:#8a96a8;--ink4:#b8c0cc;
+  --rule:#e4e8ef;--rule2:#d0d6e0;
+  --bg:#f4f6f9;--white:#ffffff;
+  --accent:#2563eb;--accent-l:#eff4ff;--accent-m:#dbeafe;--accent-d:#1d4ed8;
+  --red:#dc2626;--red-l:#fef2f2;--red-m:#fecaca;
+  --green:#059669;--green-l:#ecfdf5;--green-m:#a7f3d0;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-m:#fde68a;
+  --sans:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:6px;--shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13.5px;line-height:1.5}
+
+/* ── PRINT ── */
+@media print{
+  body{background:#fff;font-size:11px}
+  .no-print{display:none!important}
+  .section-nav{display:none}
+  header{position:relative;box-shadow:none;border-bottom:2px solid #1a1f2e;background:#fff;padding:12px 20px}
+  .s-card{box-shadow:none;break-inside:avoid}
+  .pot-block{break-inside:avoid;margin-bottom:14px}
+  .entity-bar{background:#fff;border:1px solid #ccc;box-shadow:none}
+  .sig-bar{background:#fff;border:1px solid #ccc;box-shadow:none}
+  .summary-grid{grid-template-columns:repeat(6,1fr)}
+  table.gtbl thead tr.ch th{background:#f5f5f5}
+  tr.shdr td,tr.sub-shdr td{background:#f5f5f5!important}
+  tr.total-row td,tr.highlight-row td{background:#f0f0f0!important}
+  .pot-heading{background:#1a1f2e!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tag{display:none}
+}
+
+/* ── HEADER ── */
+header{background:var(--white);border-bottom:1px solid var(--rule2);padding:0 28px;
+  display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
+.hlogo{display:flex;align-items:center;gap:12px;padding:13px 0}
+.logo-mark{width:32px;height:32px;background:var(--accent);border-radius:6px;
+  display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;
+  font-family:var(--mono);flex-shrink:0;letter-spacing:-.5px}
+.htitle h1{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.htitle p{font-size:11px;color:var(--ink3);margin-top:1px}
+.hactions{margin-left:auto;display:flex;align-items:center;gap:6px}
+.hbtn{padding:7px 14px;border-radius:5px;border:1px solid var(--rule2);font-family:var(--sans);
+  font-size:12px;font-weight:500;color:var(--ink2);background:var(--white);cursor:pointer;
+  transition:all .13s;display:flex;align-items:center;gap:6px}
+.hbtn:hover{border-color:var(--ink3);color:var(--ink)}
+.hbtn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.hbtn.pri:hover{background:var(--accent-d)}
+.hbtn svg{width:13px;height:13px}
+
+/* ── SECTION NAV ── */
+.section-nav{background:var(--white);border-bottom:1px solid var(--rule);
+  display:flex;padding:0 28px;overflow-x:auto;
+  position:sticky;top:0;z-index:199;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.section-nav a{padding:9px 14px;font-size:11.5px;font-weight:500;color:var(--ink3);
+  text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;transition:all .13s}
+.section-nav a:hover{color:var(--ink2)}
+.section-nav a.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── LAYOUT ── */
+.wrap{max-width:1260px;margin:0 auto;padding:20px 20px 40px}
+
+/* ── ENTITY BAR ── */
+.entity-bar{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:16px 20px;margin-bottom:18px}
+.entity-bar-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:12px}
+.entity-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.e-field{display:flex;flex-direction:column;gap:4px}
+.e-field label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.e-field input{background:var(--bg);border:1px solid var(--rule2);border-radius:4px;
+  padding:7px 10px;font-family:var(--sans);font-size:13px;color:var(--ink);transition:border-color .13s}
+.e-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.e-field input::placeholder{color:var(--ink4)}
+
+/* ── SECTION CARDS ── */
+.s-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.s-card-header{padding:11px 18px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;gap:10px}
+.s-card-header h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+.hnum{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;
+  font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0}
+.hnote{margin-left:auto;font-size:10px;color:var(--ink3);font-family:var(--mono)}
+
+/* ── TABLE BASE ── */
+.gtbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.gtbl{width:100%;border-collapse:collapse;min-width:640px;font-size:12.5px}
+table.gtbl thead tr.ch th{padding:8px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;text-align:right;white-space:nowrap;
+  background:#f9fafb;border-bottom:1px solid var(--rule2);color:var(--ink3)}
+table.gtbl thead tr.ch th:first-child{text-align:left;min-width:290px;padding-left:18px}
+table.gtbl thead tr.ch th.sh{text-align:left;min-width:100px;color:var(--ink3)}
+table.gtbl thead tr.ch th.hi{color:#1d4ed8}
+table.gtbl thead tr.ch th.hc{color:#047857}
+table.gtbl thead tr.ch th.hs{color:#b45309}
+table.gtbl thead tr.ch th.he{color:#7c3aed}
+table.gtbl thead tr.ch th.ht{color:var(--ink)}
+table.gtbl tbody tr{border-bottom:1px solid var(--rule)}
+table.gtbl tbody tr:last-child{border-bottom:none}
+table.gtbl tbody tr:hover{background:#fafbfc}
+table.gtbl tbody td{padding:0;vertical-align:middle}
+
+/* Desc cells */
+.d{padding:7px 12px 7px 18px;color:var(--ink2);font-size:12.5px;line-height:1.35;vertical-align:middle}
+.d.i1{padding-left:30px}
+.d.i2{padding-left:42px;color:var(--ink3);font-size:12px}
+.sc{padding:6px 12px;color:var(--ink3);font-size:11px;font-family:var(--mono);white-space:nowrap;vertical-align:middle}
+
+/* Section headers */
+tr.shdr td{background:#f9fafb!important;padding:7px 18px!important;
+  border-top:1px solid var(--rule2);border-bottom:1px solid var(--rule2)!important}
+tr.shdr .sl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+tr.sub-shdr td{background:#fafafa!important;padding:5px 18px 5px 30px!important;
+  border-bottom:1px solid var(--rule)!important}
+tr.sub-shdr .sl{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+
+/* Row variants */
+tr.total-row td{background:#f9fafb!important;border-top:1px solid var(--rule2);border-bottom:1px solid var(--rule2)!important}
+tr.total-row td.d{font-weight:600;color:var(--ink)}
+tr.highlight-row td{background:var(--accent-l)!important;border-top:1px solid var(--accent-m)!important;border-bottom:1px solid var(--accent-m)!important}
+tr.highlight-row td.d{font-weight:700;color:var(--accent)}
+tr.grand-row td{background:var(--accent-l)!important;border-top:2px solid var(--accent-m)!important;border-bottom:2px solid var(--accent-m)!important}
+tr.grand-row td.d{font-weight:700;color:var(--accent)}
+tr.mand-row{background:var(--red-l)!important}
+tr.mand-row td.d{color:var(--red)}
+tr.off-row td.d{color:var(--accent)}
+tr.cash-row td{background:var(--red-l)!important}
+tr.cash-row td.d{color:var(--red);font-weight:600}
+tr.carry-row td{background:var(--amber-l)!important}
+tr.carry-row td.d{color:var(--amber);font-weight:600}
+tr.net-row td{background:var(--green-l)!important}
+tr.net-row td.d{color:var(--green);font-weight:600}
+
+/* Input cells */
+.vc{padding:3px 8px 3px 4px;text-align:right;vertical-align:middle}
+.vc input[type=number]{background:var(--white);border:1px solid var(--rule2);border-radius:4px;
+  padding:5px 8px;color:var(--ink);font-family:var(--mono);font-size:12px;
+  width:110px;text-align:right;-moz-appearance:textfield;transition:border-color .13s,box-shadow .13s}
+.vc input::-webkit-inner-spin-button,.vc input::-webkit-outer-spin-button{-webkit-appearance:none}
+.vc input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.vc input:disabled{opacity:.15;pointer-events:none;background:var(--bg)}
+
+/* Calculated cells */
+.cc{padding:6px 12px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--ink2);vertical-align:middle}
+.cc.ci{color:#1d4ed8}.cc.cg{color:#047857}.cc.ca{color:#b45309}.cc.cp{color:#7c3aed}
+.cc.ct{color:var(--ink);font-weight:500}
+.cc.cred{color:var(--red)}.cc.camb{color:var(--amber)}.cc.cgr{color:var(--green)}.cc.cacc{color:var(--accent)}
+.cc.zero{color:var(--ink4)}
+
+/* Tags */
+.tag{display:inline-block;font-size:9px;font-family:var(--mono);padding:1px 5px;
+  border-radius:3px;margin-left:5px;vertical-align:middle;letter-spacing:.02em;font-weight:500}
+.t-cash{color:var(--red);background:var(--red-l);border:1px solid var(--red-m)}
+.t-opt{color:var(--accent);background:var(--accent-l);border:1px solid var(--accent-m)}
+.t-nll{color:var(--green);background:var(--green-l);border:1px solid var(--green-m)}
+
+/* ── BUTTON BAR ── */
+.btn-bar{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;align-items:center}
+.btn{padding:9px 22px;border-radius:5px;border:1px solid var(--rule2);font-family:var(--sans);
+  font-size:13px;font-weight:600;cursor:pointer;transition:all .13s;letter-spacing:-.01em}
+.btn-calc{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-calc:hover{background:var(--accent-d);transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.25)}
+.btn-ghost{background:var(--white);color:var(--ink2)}
+.btn-ghost:hover{border-color:var(--ink3);color:var(--ink)}
+.sep{width:1px;height:24px;background:var(--rule2)}
+
+/* ── SUMMARY GRID ── */
+.summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0;
+  border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;
+  background:var(--white);margin-bottom:18px;box-shadow:var(--shadow)}
+.sum-card{padding:13px 15px;border-right:1px solid var(--rule)}
+.sum-card:last-child{border-right:none}
+.sum-lbl{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px}
+.sum-val{font-size:16px;font-family:var(--mono);font-weight:500;color:var(--ink)}
+.sum-sub{font-size:9.5px;color:var(--ink4);margin-top:2px}
+
+/* ── POT BLOCKS ── */
+.pot-block{margin-bottom:14px;border:1px solid var(--rule);border-radius:var(--r);
+  overflow:hidden;background:var(--white);box-shadow:var(--shadow)}
+.pot-heading{background:var(--ink);padding:9px 18px;display:flex;align-items:center;gap:10px}
+.pot-heading .ph-num{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);
+  font-family:var(--mono);letter-spacing:.04em}
+.pot-heading .ph-title{font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:#fff}
+
+/* ── NOTES ── */
+.note-box{padding:11px 16px;font-size:11.5px;line-height:1.7}
+.note-ok{background:var(--green-l);border-top:1px solid var(--green-m);color:#065f46}
+.note-warn{background:var(--amber-l);border-top:1px solid var(--amber-m);color:#92400e}
+
+/* ── SIGNATURE BAR ── */
+.sig-bar{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:20px 24px;margin-top:24px}
+.sig-bar-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:14px}
+.sig-fields{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.sig-field{display:flex;flex-direction:column;gap:6px}
+.sig-field label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.sig-field input{background:var(--bg);border:1px solid var(--rule2);border-radius:4px;
+  padding:7px 10px;font-family:var(--sans);font-size:13px;color:var(--ink);transition:border-color .13s}
+.sig-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.sig-field input::placeholder{color:var(--ink4)}
+.sig-line{margin-top:8px;border-bottom:1px solid var(--rule2);padding-bottom:4px;
+  font-size:11px;color:var(--ink3);font-family:var(--mono)}
+
+/* ── EMPTY ── */
+.empty{padding:36px 20px;text-align:center;color:var(--ink3);font-size:12.5px}
+.empty strong{color:var(--accent)}
+
+@media(max-width:1100px){.summary-grid{grid-template-columns:repeat(3,1fr)}.sum-card:nth-child(3){border-right:none}.sum-card:nth-child(4){border-top:1px solid var(--rule)}}
+@media(max-width:700px){.entity-fields,.sig-fields{grid-template-columns:1fr}.summary-grid{grid-template-columns:1fr 1fr}.htitle p{display:none}.wrap{padding:12px}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="hlogo">
+    <div class="logo-mark">GST</div>
+    <div class="htitle">
+      <h1>GST Optimal Offset Calculator</h1>
+      <p>Section 49 · CGST Act 2017 · Minimize Cash Outflow · Equalize CGST / SGST Carry-Forward</p>
+    </div>
+  </div>
+  <div class="hactions no-print">
+    <button class="hbtn" onclick="dlExcel()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h10M8 3v7M5 7l3 3 3-3"/></svg>Excel
+    </button>
+  </div>
+</header>
+
+<!-- NAV -->
+<div class="section-nav no-print">
+  <a href="#entity" class="on">Entity Details</a>
+  <a href="#s1">Ledger Balances</a>
+  <a href="#s2">Outward Liability</a>
+  <a href="#s3">Input Tax Credit</a>
+  <a href="#s4">Payment of Tax</a>
+</div>
+
+<div class="wrap">
+
+<!-- ══ ENTITY DETAILS ══ -->
+<div class="entity-bar" id="entity">
+  <div class="entity-bar-title">Entity Details</div>
+  <div class="entity-fields">
+    <div class="e-field">
+      <label>GSTIN</label>
+      <input type="text" id="ent_gstin" placeholder="e.g. 29ABCDE1234F1Z5" maxlength="15">
+    </div>
+    <div class="e-field">
+      <label>Name of Entity / Trade Name</label>
+      <input type="text" id="ent_name" placeholder="Registered legal / trade name">
+    </div>
+    <div class="e-field">
+      <label>Tax Period</label>
+      <input type="text" id="ent_period" placeholder="e.g. April 2025 / Q1 FY 2025-26">
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION 1 ══ -->
+<div class="s-card" id="s1">
+  <div class="s-card-header">
+    <span class="hnum">1</span>
+    <h2>Electronic Ledger Balances — Opening</h2>
+    <span class="hnote">Opening balances before current period</span>
+  </div>
+  <div class="gtbl-wrap">
+  <table class="gtbl">
+    <thead><tr class="ch">
+      <th>Ledger</th><th class="sh">Sub-Head</th>
+      <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+      <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+      <th class="ht">Total (₹)</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="d">Electronic Cash Ledger</td><td class="sc">Tax</td>
+        <td class="vc"><input type="number" id="ecl_tax_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_tax_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_tax_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_tax_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ecl_tax_t">—</td>
+      </tr>
+      <tr>
+        <td class="d"></td><td class="sc">Interest</td>
+        <td class="vc"><input type="number" id="ecl_int_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_int_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_int_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_int_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ecl_int_t">—</td>
+      </tr>
+      <tr>
+        <td class="d"></td><td class="sc">Late Fees</td>
+        <td class="vc"><input type="number" id="ecl_lf_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_lf_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_lf_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecl_lf_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ecl_lf_t">—</td>
+      </tr>
+      <tr>
+        <td class="d">Electronic Credit Ledger</td><td class="sc">Tax</td>
+        <td class="vc"><input type="number" id="ecr_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecr_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecr_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ecr_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ecr_t">—</td>
+      </tr>
+      <tr>
+        <td class="d">Negative Liability Ledger <span class="tag t-nll">NLL</span></td><td class="sc">Tax</td>
+        <td class="vc"><input type="number" id="nll_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="nll_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="nll_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="nll_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="nll_t">—</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ══ SECTION 2 — no Remarks column ══ -->
+<div class="s-card" id="s2">
+  <div class="s-card-header">
+    <span class="hnum">2</span>
+    <h2>Outward GST Liability</h2>
+    <span class="hnote">GSTR-3B Table 3.1</span>
+  </div>
+  <div class="gtbl-wrap">
+  <table class="gtbl">
+    <thead><tr class="ch">
+      <th>Description</th>
+      <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+      <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+      <th class="ht">Total (₹)</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="d">(a) Outward taxable supplies (other than zero rated) <span class="tag t-opt">ITC / Cash</span></td>
+        <td class="vc"><input type="number" id="la_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="la_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="la_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="la_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="la_t">—</td>
+      </tr>
+      <tr>
+        <td class="d">(b) Outward taxable supplies — Zero Rated <span class="tag t-opt">ITC / Cash</span>&nbsp;<span style="font-size:10.5px;color:var(--ink3)">(IGST / Cess only)</span></td>
+        <td class="vc"><input type="number" id="lb_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" disabled></td>
+        <td class="vc"><input type="number" disabled></td>
+        <td class="vc"><input type="number" id="lb_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="lb_t">—</td>
+      </tr>
+      <tr class="mand-row">
+        <td class="d">(c) Inward supplies — Reverse Charge (RCM) <span class="tag t-cash">CASH ONLY</span></td>
+        <td class="vc"><input type="number" id="lc_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="lc_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="lc_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="lc_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="lc_t">—</td>
+      </tr>
+      <tr class="mand-row">
+        <td class="d">(d) E-Commerce Operator u/s 9(5) <span class="tag t-cash">CASH ONLY</span></td>
+        <td class="vc"><input type="number" id="ld_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ld_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ld_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ld_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ld_t">—</td>
+      </tr>
+      <tr class="mand-row">
+        <td class="d">Interest @ 18% <span class="tag t-cash">CASH ONLY</span></td>
+        <td class="vc"><input type="number" id="lint_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="lint_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="lint_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="lint_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="lint_t">—</td>
+      </tr>
+      <tr class="mand-row">
+        <td class="d">Late Fee (₹20/day — Nil return · ₹50/day — Others) <span class="tag t-cash">CASH ONLY</span>&nbsp;<span style="font-size:10.5px;color:var(--red)">(CGST / SGST only)</span></td>
+        <td class="vc"><input type="number" disabled></td>
+        <td class="vc"><input type="number" id="llf_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="llf_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" disabled></td>
+        <td class="cc ct" id="llf_t">—</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ══ SECTION 3 ══ -->
+<div class="s-card" id="s3">
+  <div class="s-card-header">
+    <span class="hnum">3</span>
+    <h2>Input Tax Credit</h2>
+    <span class="hnote">GSTR-3B Table 4</span>
+  </div>
+  <div class="gtbl-wrap">
+  <table class="gtbl">
+    <thead><tr class="ch">
+      <th>Description</th>
+      <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+      <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+      <th class="ht">Total (₹)</th>
+    </tr></thead>
+    <tbody>
+      <!-- (A) ITC Available -->
+      <tr class="shdr"><td colspan="6"><span class="sl">(A) ITC Available — whether in full or part</span></td></tr>
+      <tr><td class="d i1">(1) Import of goods</td>
+        <td class="vc"><input type="number" id="ia1_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" disabled></td><td class="vc"><input type="number" disabled></td>
+        <td class="vc"><input type="number" id="ia1_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ia1_t">—</td></tr>
+      <tr><td class="d i1">(2) Import of services</td>
+        <td class="vc"><input type="number" id="ia2_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" disabled></td><td class="vc"><input type="number" disabled></td>
+        <td class="vc"><input type="number" id="ia2_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ia2_t">—</td></tr>
+      <tr><td class="d i1">(3) Inward supplies — reverse charge (other than 1 &amp; 2)</td>
+        <td class="vc"><input type="number" id="ia3_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia3_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia3_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia3_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ia3_t">—</td></tr>
+      <tr><td class="d i1">(4) Inward supplies from ISD</td>
+        <td class="vc"><input type="number" id="ia4_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia4_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia4_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia4_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ia4_t">—</td></tr>
+      <tr><td class="d i1">(5) All other ITC</td>
+        <td class="vc"><input type="number" id="ia5_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia5_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia5_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ia5_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ia5_t">—</td></tr>
+      <!-- Highlighted total row -->
+      <tr class="highlight-row">
+        <td class="d">Total ITC Available (A)</td>
+        <td class="cc ci" id="itca_i">—</td><td class="cc cg" id="itca_c">—</td>
+        <td class="cc ca" id="itca_s">—</td><td class="cc cp" id="itca_e">—</td>
+        <td class="cc ct" id="itca_t">—</td>
+      </tr>
+
+      <!-- (B) ITC Reversible — I. Permanent, II. Temporary -->
+      <tr class="shdr"><td colspan="6"><span class="sl">(B) ITC Reversible</span></td></tr>
+      <tr class="sub-shdr"><td colspan="6"><span class="sl">I. Permanent Reversal</span></td></tr>
+      <tr><td class="d i2">(1) Rule 38 — Banking / NBFC 50% reversal</td>
+        <td class="vc"><input type="number" id="ib_p1_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p1_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p1_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p1_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_p1_t">—</td></tr>
+      <tr><td class="d i2">(2) Rule 42 — Common Credit (Inputs / Input Services)</td>
+        <td class="vc"><input type="number" id="ib_p2_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p2_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p2_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p2_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_p2_t">—</td></tr>
+      <tr><td class="d i2">(3) Rule 43 — Common Credit (Capital Goods)</td>
+        <td class="vc"><input type="number" id="ib_p3_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p3_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p3_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p3_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_p3_t">—</td></tr>
+      <tr><td class="d i2">(4) Section 17(5) — Blocked Credit</td>
+        <td class="vc"><input type="number" id="ib_p4_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p4_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p4_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p4_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_p4_t">—</td></tr>
+      <tr><td class="d i2">(5) Any other</td>
+        <td class="vc"><input type="number" id="ib_p5_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p5_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p5_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_p5_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_p5_t">—</td></tr>
+      <tr class="total-row">
+        <td class="d i1">Sub-total — I. Permanent Reversal</td>
+        <td class="cc ci" id="ibp_i">—</td><td class="cc cg" id="ibp_c">—</td>
+        <td class="cc ca" id="ibp_s">—</td><td class="cc cp" id="ibp_e">—</td>
+        <td class="cc ct" id="ibp_t">—</td>
+      </tr>
+
+      <tr class="sub-shdr"><td colspan="6"><span class="sl">II. Temporary Reversal</span></td></tr>
+      <tr><td class="d i2">(1) Rule 37 — Non-payment within 180 days</td>
+        <td class="vc"><input type="number" id="ib_t1_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t1_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t1_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t1_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_t1_t">—</td></tr>
+      <tr><td class="d i2">(2) Rule 37A — Non-compliance by supplier (GSTR-3B)</td>
+        <td class="vc"><input type="number" id="ib_t2_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t2_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t2_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t2_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_t2_t">—</td></tr>
+      <tr><td class="d i2">(3) Section 16(2)(b) — Goods / Services not yet received</td>
+        <td class="vc"><input type="number" id="ib_t3_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t3_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t3_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t3_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_t3_t">—</td></tr>
+      <tr><td class="d i2">(4) Section 39 — ITC reversed by ISD</td>
+        <td class="vc"><input type="number" id="ib_t4_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t4_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t4_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t4_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_t4_t">—</td></tr>
+      <tr><td class="d i2">(5) Any other</td>
+        <td class="vc"><input type="number" id="ib_t5_i" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t5_c" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t5_s" placeholder="0.00" oninput="live()"></td>
+        <td class="vc"><input type="number" id="ib_t5_e" placeholder="0.00" oninput="live()"></td>
+        <td class="cc ct" id="ib_t5_t">—</td></tr>
+      <tr class="total-row">
+        <td class="d i1">Sub-total — II. Temporary Reversal</td>
+        <td class="cc ci" id="ibt_i">—</td><td class="cc cg" id="ibt_c">—</td>
+        <td class="cc ca" id="ibt_s">—</td><td class="cc cp" id="ibt_e">—</td>
+        <td class="cc ct" id="ibt_t">—</td>
+      </tr>
+      <!-- Highlighted total row -->
+      <tr class="highlight-row">
+        <td class="d">Total ITC Reversible (I + II)</td>
+        <td class="cc ci" id="itcb_i">—</td><td class="cc cg" id="itcb_c">—</td>
+        <td class="cc ca" id="itcb_s">—</td><td class="cc cp" id="itcb_e">—</td>
+        <td class="cc ct" id="itcb_t">—</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- BUTTON BAR -->
+<div class="btn-bar no-print">
+  <button class="btn btn-calc" onclick="calculate()">Calculate Optimal Offset</button>
+  <span class="sep"></span>
+  <button class="btn btn-ghost" onclick="loadSample()">Load Sample Data</button>
+  <button class="btn btn-ghost" onclick="resetAll()">Reset</button>
+</div>
+
+<!-- ══ SECTION 4 — PAYMENT OF TAX ══ -->
+<div id="s4">
+
+  <!-- Summary KPIs -->
+  <div class="summary-grid">
+    <div class="sum-card"><div class="sum-lbl">Total Liability</div><div class="sum-val" id="sm1">—</div><div class="sum-sub">Gross outward GST</div></div>
+    <div class="sum-card"><div class="sum-lbl">Net After NLL</div><div class="sum-val" id="sm2">—</div><div class="sum-sub">After NLL deduction</div></div>
+    <div class="sum-card"><div class="sum-lbl">Net ITC Available</div><div class="sum-val" id="sm3">—</div><div class="sum-sub">Available − Reversals</div></div>
+    <div class="sum-card"><div class="sum-lbl">ITC Utilized</div><div class="sum-val" id="sm4">—</div><div class="sum-sub">Via Credit Ledger</div></div>
+    <div class="sum-card"><div class="sum-lbl">Total Cash Required</div><div class="sum-val" id="sm5">—</div><div class="sum-sub">Mandatory + FCM Cash</div></div>
+    <div class="sum-card"><div class="sum-lbl">Additional Cash Needed</div><div class="sum-val" id="sm6">—</div><div class="sum-sub">After opening ECL balance</div></div>
+  </div>
+
+  <!-- 4.1 Opening Balances -->
+  <div class="pot-block">
+    <div class="pot-heading"><span class="ph-num">4.1</span><span class="ph-title">Opening Balances</span></div>
+    <div class="gtbl-wrap"><table class="gtbl">
+      <thead><tr class="ch"><th>Description</th><th class="sh">Sub-Head</th>
+        <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+        <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+        <th class="ht">Total (₹)</th></tr></thead>
+      <tbody id="tb41"></tbody>
+    </table></div>
+  </div>
+
+  <!-- 4.2 NET ITC -->
+  <div class="pot-block">
+    <div class="pot-heading"><span class="ph-num">4.2</span><span class="ph-title">Net ITC Available for the Period</span></div>
+    <div class="gtbl-wrap"><table class="gtbl">
+      <thead><tr class="ch"><th>Description</th><th class="sh">Sub-Head</th>
+        <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+        <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+        <th class="ht">Total (₹)</th></tr></thead>
+      <tbody id="tb42"></tbody>
+    </table></div>
+  </div>
+
+  <!-- 4.3 NET OUTWARD LIABILITY -->
+  <div class="pot-block">
+    <div class="pot-heading"><span class="ph-num">4.3</span><span class="ph-title">Net Outward GST Liability</span></div>
+    <div class="gtbl-wrap"><table class="gtbl">
+      <thead><tr class="ch"><th>Description</th><th class="sh">Sub-Head</th>
+        <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+        <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+        <th class="ht">Total (₹)</th></tr></thead>
+      <tbody id="tb43"></tbody>
+    </table></div>
+  </div>
+
+  <!-- 4.4 OFFSET THROUGH ITC -->
+  <div class="pot-block">
+    <div class="pot-heading"><span class="ph-num">4.4</span><span class="ph-title">Offset through ITC — Sec 49(5) Sequence</span></div>
+    <div class="gtbl-wrap"><table class="gtbl">
+      <thead><tr class="ch"><th>Description</th><th class="sh">Sub-Head</th>
+        <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+        <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+        <th class="ht">Total (₹)</th></tr></thead>
+      <tbody id="tb44"></tbody>
+    </table></div>
+  </div>
+
+  <!-- 4.5 OFFSET THROUGH CASH (MANDATORY) -->
+  <div class="pot-block">
+    <div class="pot-heading"><span class="ph-num">4.5</span><span class="ph-title">Offset through Cash — Mandatory</span></div>
+    <div class="gtbl-wrap"><table class="gtbl">
+      <thead><tr class="ch"><th>Description</th><th class="sh">Sub-Head</th>
+        <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+        <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+        <th class="ht">Total (₹)</th></tr></thead>
+      <tbody id="tb45"></tbody>
+    </table></div>
+  </div>
+
+  <!-- 4.6 CASH REQUIRED -->
+  <div class="pot-block">
+    <div class="pot-heading"><span class="ph-num">4.6</span><span class="ph-title">Cash Required — Electronic Cash Ledger</span></div>
+    <div class="gtbl-wrap"><table class="gtbl">
+      <thead><tr class="ch"><th>Description</th><th class="sh">Sub-Head</th>
+        <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+        <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+        <th class="ht">Total (₹)</th></tr></thead>
+      <tbody id="tb46"></tbody>
+    </table></div>
+  </div>
+
+  <!-- 4.7 CARRY FORWARD -->
+  <div class="pot-block">
+    <div class="pot-heading" style="background:#374151"><span class="ph-num">4.7</span><span class="ph-title">Cash &amp; ITC Carry Forward to Next Period</span></div>
+    <div class="gtbl-wrap"><table class="gtbl">
+      <thead><tr class="ch"><th>Description</th><th class="sh">Sub-Head</th>
+        <th class="hi">IGST (₹)</th><th class="hc">CGST (₹)</th>
+        <th class="hs">SGST / UTGST (₹)</th><th class="he">Cess (₹)</th>
+        <th class="ht">Total (₹)</th></tr></thead>
+      <tbody id="tb47"></tbody>
+    </table></div>
+    <div id="eq-box"></div>
+  </div>
+
+  <!-- Empty state (before calculate) -->
+  <div id="pot-empty"><div class="empty" style="background:var(--white);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--shadow)">
+    Click <strong>Calculate Optimal Offset</strong> above to compute the payment details
+  </div></div>
+
+</div><!-- /s4 -->
+
+<!-- ══ SIGNATORIES ══ -->
+<div class="sig-bar" id="sig-bar">
+  <div class="sig-bar-title">Signatories</div>
+  <div class="sig-fields">
+    <div class="sig-field">
+      <label>Prepared By</label>
+      <input type="text" id="sig_prep_name" placeholder="Name">
+      <input type="text" id="sig_prep_desig" placeholder="Designation" style="margin-top:6px">
+      <div class="sig-line">Signature &amp; Date</div>
+    </div>
+    <div class="sig-field">
+      <label>Reviewed By</label>
+      <input type="text" id="sig_rev_name" placeholder="Name">
+      <input type="text" id="sig_rev_desig" placeholder="Designation" style="margin-top:6px">
+      <div class="sig-line">Signature &amp; Date</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ═══════════════════════════
+const H=['i','c','s','e'];
+const ITC_A=['ia1','ia2','ia3','ia4','ia5'];
+const ITC_BP=['ib_p1','ib_p2','ib_p3','ib_p4','ib_p5'];
+const ITC_BT=['ib_t1','ib_t2','ib_t3','ib_t4','ib_t5'];
+const ITC_B=[...ITC_BP,...ITC_BT];
+
+function gv(id){const e=document.getElementById(id);return e&&!e.disabled?(parseFloat(e.value)||0):0}
+function fmt(n){return n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtR(n){return '₹\u202f'+fmt(n)}
+function T(o){return H.reduce((a,h)=>a+(o[h]||0),0)}
+function sum(ids){return ids.reduce((a,id)=>a+gv(id),0)}
+
+function setCC(id,n,cls){
+  const e=document.getElementById(id);if(!e)return;
+  e.className=e.className.replace(/\b(ci|cg|ca|cp|ct|cred|camb|cgr|cacc|zero)\b/g,'').trim();
+  if(!n){e.textContent='—';e.classList.add('zero')}else{e.textContent=fmt(n);if(cls)e.classList.add(cls)}
+}
+
+// ── LIVE TOTALS ──
+function live(){
+  const simpleRows=[
+    {ids:['ecl_tax_i','ecl_tax_c','ecl_tax_s','ecl_tax_e'],out:'ecl_tax_t'},
+    {ids:['ecl_int_i','ecl_int_c','ecl_int_s','ecl_int_e'],out:'ecl_int_t'},
+    {ids:['ecl_lf_i','ecl_lf_c','ecl_lf_s','ecl_lf_e'],out:'ecl_lf_t'},
+    {ids:['ecr_i','ecr_c','ecr_s','ecr_e'],out:'ecr_t'},
+    {ids:['nll_i','nll_c','nll_s','nll_e'],out:'nll_t'},
+    {ids:['la_i','la_c','la_s','la_e'],out:'la_t'},
+    {ids:['lb_i','lb_e'],out:'lb_t'},
+    {ids:['lc_i','lc_c','lc_s','lc_e'],out:'lc_t'},
+    {ids:['ld_i','ld_c','ld_s','ld_e'],out:'ld_t'},
+    {ids:['lint_i','lint_c','lint_s','lint_e'],out:'lint_t'},
+    {ids:['llf_c','llf_s'],out:'llf_t'},
+  ];
+  [...ITC_A,...ITC_B].forEach(r=>{
+    simpleRows.push({ids:H.map(h=>`${r}_${h}`),out:`${r}_t`});
+  });
+  simpleRows.forEach(r=>setCC(r.out,sum(r.ids),'ct'));
+
+  H.forEach(h=>{
+    const va=ITC_A.reduce((a,r)=>a+gv(`${r}_${h}`),0);
+    const vbp=ITC_BP.reduce((a,r)=>a+gv(`${r}_${h}`),0);
+    const vbt=ITC_BT.reduce((a,r)=>a+gv(`${r}_${h}`),0);
+    const vb=vbp+vbt;
+    setCC(`itca_${h}`,va,{i:'ci',c:'cg',s:'ca',e:'cp'}[h]);
+    setCC(`ibp_${h}`,vbp,{i:'ci',c:'cg',s:'ca',e:'cp'}[h]);
+    setCC(`ibt_${h}`,vbt,{i:'ci',c:'cg',s:'ca',e:'cp'}[h]);
+    setCC(`itcb_${h}`,vb,{i:'ci',c:'cg',s:'ca',e:'cp'}[h]);
+  });
+  const totA=H.reduce((a,h)=>a+ITC_A.reduce((b,r)=>b+gv(`${r}_${h}`),0),0);
+  const totBP=H.reduce((a,h)=>a+ITC_BP.reduce((b,r)=>b+gv(`${r}_${h}`),0),0);
+  const totBT=H.reduce((a,h)=>a+ITC_BT.reduce((b,r)=>b+gv(`${r}_${h}`),0),0);
+  setCC('itca_t',totA,'ct');
+  setCC('ibp_t',totBP,'ct');
+  setCC('ibt_t',totBT,'ct');
+  setCC('itcb_t',totBP+totBT,'ct');
+}
+
+// ── TABLE ROW BUILDERS ──
+function mkTr(trCls){const tr=document.createElement('tr');if(trCls)tr.className=trCls;return tr}
+
+function addCell(tr,text,cls,colspan){
+  const td=document.createElement('td');
+  td.className=cls||'';
+  if(colspan)td.colSpan=colspan;
+  if(typeof text==='string')td.innerHTML=text;
+  else td.textContent=text||'';
+  tr.appendChild(td);return td;
+}
+
+function numCell(tr,n,numCls){
+  const td=document.createElement('td');
+  td.className='cc '+(n===0||n==null?'zero':(numCls||'ct'));
+  td.textContent=(n===0||n==null)?'—':fmt(n);
+  tr.appendChild(td);return td;
+}
+
+function appendRow(tbody,desc,sub,vals,trCls,dCls){
+  const tr=mkTr(trCls);
+  addCell(tr,desc,'d'+(dCls?' '+dCls:''));
+  addCell(tr,sub||'','sc');
+  const hcls=['ci','cg','ca','cp'];
+  let tot=0;
+  vals.forEach((v,i)=>{const n=v||0;tot+=n;numCell(tr,n,hcls[i])});
+  numCell(tr,tot,'ct');
+  tbody.appendChild(tr);
+}
+
+function appendShdr(tbody,label,subspan){
+  const tr=mkTr(subspan?'sub-shdr':'shdr');
+  addCell(tr,`<span class="sl">${label}</span>`,'',7);
+  tbody.appendChild(tr);
+}
+
+// ── MAIN CALCULATE ──
+let LAST={};
+
+function calculate(){
+  live();
+  const ecl={tax:{},int:{},lf:{}};
+  H.forEach(h=>{ecl.tax[h]=gv(`ecl_tax_${h}`);ecl.int[h]=gv(`ecl_int_${h}`);ecl.lf[h]=gv(`ecl_lf_${h}`)});
+  const ecr={},nll={};
+  H.forEach(h=>{ecr[h]=gv(`ecr_${h}`);nll[h]=gv(`nll_${h}`)});
+  const fcm={},rcm_eco={},interest={},latefee={};
+  H.forEach(h=>{
+    fcm[h]=gv(`la_${h}`)+gv(`lb_${h}`);
+    rcm_eco[h]=gv(`lc_${h}`)+gv(`ld_${h}`);
+    interest[h]=gv(`lint_${h}`);
+    latefee[h]=gv(`llf_${h}`);
+  });
+  const grossLiab={};H.forEach(h=>{grossLiab[h]=fcm[h]+rcm_eco[h]+interest[h]+latefee[h]});
+  const itcA={},itcB={},netITC={};
+  H.forEach(h=>{
+    itcA[h]=ITC_A.reduce((a,r)=>a+gv(`${r}_${h}`),0);
+    itcB[h]=ITC_B.reduce((a,r)=>a+gv(`${r}_${h}`),0);
+    netITC[h]=Math.max(0,itcA[h]-itcB[h]+ecr[h]);
+  });
+  const fcmNLL={};H.forEach(h=>{fcmNLL[h]=Math.max(0,fcm[h]-nll[h])});
+  const rem={i:netITC.i,c:netITC.c,s:netITC.s,e:netITC.e};
+  const liab={i:fcmNLL.i,c:fcmNLL.c,s:fcmNLL.s,e:fcmNLL.e};
+  const off={ii:0,ic:0,is:0,ci:0,cc:0,si:0,ss:0,ie:0,ee:0};
+  function applyOff(fr,to,mx){
+    const v=Math.min(Math.max(0,mx),rem[fr],liab[to]);
+    if(v>0){off[fr+to]=(off[fr+to]||0)+v;rem[fr]-=v;liab[to]-=v}
+  }
+  applyOff('i','i',rem.i);applyOff('c','c',rem.c);applyOff('s','s',rem.s);applyOff('e','e',rem.e);
+  if(rem.i>0&&(liab.c>0||liab.s>0)){
+    if(liab.c>0&&liab.s>0){
+      if(rem.c<=rem.s){applyOff('i','c',rem.i);applyOff('i','s',rem.i)}
+      else{applyOff('i','s',rem.i);applyOff('i','c',rem.i)}
+    }else if(liab.c>0){applyOff('i','c',rem.i)}else{applyOff('i','s',rem.i)}
+  }
+  if(rem.i===0&&liab.i>0){
+    if(rem.c>=rem.s){applyOff('c','i',rem.c);applyOff('s','i',rem.s)}
+    else{applyOff('s','i',rem.s);applyOff('c','i',rem.c)}
+  }
+  const fcmCash={i:liab.i,c:liab.c,s:liab.s,e:liab.e};
+  const mandCash={},totalCash={},carry={};
+  H.forEach(h=>{mandCash[h]=rcm_eco[h]+interest[h]+latefee[h];totalCash[h]=fcmCash[h]+mandCash[h];carry[h]=rem[h]});
+  const openECL={};H.forEach(h=>{openECL[h]=ecl.tax[h]+ecl.int[h]+ecl.lf[h]});
+  const addCash={};H.forEach(h=>{addCash[h]=Math.max(0,totalCash[h]-openECL[h])});
+
+  LAST={ecl,ecr,nll,fcm,rcm_eco,interest,latefee,grossLiab,itcA,itcB,netITC,fcmNLL,fcmCash,mandCash,totalCash,carry,off,openECL,addCash};
+
+  // Summary bar
+  const sv=[T(grossLiab),T(fcmNLL)+T(mandCash),T(netITC),Object.values(off).reduce((a,v)=>a+v,0),T(totalCash),T(addCash)];
+  const scol=['','','','',var_red,var_amber];
+  ['sm1','sm2','sm3','sm4','sm5','sm6'].forEach((id,i)=>{
+    const e=document.getElementById(id);
+    e.textContent=sv[i]>0?fmtR(sv[i]):'—';
+    e.style.color=i===4?'var(--red)':i===5?'var(--amber)':'';
+  });
+
+  // Hide empty state, show blocks
+  document.getElementById('pot-empty').style.display='none';
+  ['tb41','tb42','tb43','tb44','tb45','tb46','tb47'].forEach(id=>{document.getElementById(id).innerHTML=''});
+
+  const hv=(o)=>[o.i||0,o.c||0,o.s||0,o.e||0];
+
+  // 4.1 Opening balances
+  const t41=document.getElementById('tb41');
+  appendRow(t41,'Electronic Cash Ledger','Tax',hv(ecl.tax));
+  appendRow(t41,'','Interest',hv(ecl.int));
+  appendRow(t41,'','Late Fees',hv(ecl.lf));
+  appendRow(t41,'Electronic Credit Ledger','Tax',hv(ecr));
+  appendRow(t41,'Negative Liability Ledger (NLL)','Tax',hv(nll),'net-row');
+
+  // 4.2 Net ITC
+  const t42=document.getElementById('tb42');
+  appendRow(t42,'A. ITC Available (Gross)','Tax',hv(itcA),'','i1');
+  appendRow(t42,'B. ITC Reversible (I + II)','Tax',hv(itcB),'','i1');
+  appendRow(t42,'Net ITC Available [A − B + Opening Credit Ledger]','Tax',hv(netITC),'highlight-row');
+
+  // 4.3 Net outward liability
+  const t43=document.getElementById('tb43');
+  appendRow(t43,'I. Gross FCM Liability (before NLL)','Tax',hv(fcm),'total-row','i1');
+  appendRow(t43,'Less: Negative Liability Ledger (NLL)','Tax',hv(nll),'net-row','i1');
+  appendRow(t43,'II. Net FCM Liability (after NLL)','Tax',hv(fcmNLL),'highlight-row');
+
+  // 4.4 Offset through ITC
+  const t44=document.getElementById('tb44');
+  const iu={i:(off.ii+off.ci+off.si),c:(off.ic+off.cc),s:(off.is+off.ss),e:(off.ie+off.ee)};
+  appendShdr(t44,'Applied to IGST Liability',true);
+  appendRow(t44,'Paid via IGST ITC','Tax',[off.ii,0,0,0],'off-row','i1');
+  appendRow(t44,'Paid via CGST ITC (after IGST ITC exhausted)','Tax',[off.ci,0,0,0],'off-row','i1');
+  appendRow(t44,'Paid via SGST / UTGST ITC (after IGST ITC exhausted)','Tax',[off.si,0,0,0],'off-row','i1');
+  appendShdr(t44,'Applied to CGST Liability',true);
+  appendRow(t44,'Paid via IGST ITC','Tax',[0,off.ic,0,0],'off-row','i1');
+  appendRow(t44,'Paid via CGST ITC','Tax',[0,off.cc,0,0],'off-row','i1');
+  appendShdr(t44,'Applied to SGST / UTGST Liability',true);
+  appendRow(t44,'Paid via IGST ITC','Tax',[0,0,off.is,0],'off-row','i1');
+  appendRow(t44,'Paid via SGST / UTGST ITC','Tax',[0,0,off.ss,0],'off-row','i1');
+  appendShdr(t44,'Applied to Cess Liability',true);
+  appendRow(t44,'Paid via Cess ITC','Tax',[0,0,0,off.ee],'off-row','i1');
+  appendRow(t44,'Total ITC Offset','Tax',hv(iu),'highlight-row');
+  appendRow(t44,'Balance FCM Liability after ITC (payable in cash)','Tax',hv(fcmCash),'cash-row');
+
+  // 4.5 Mandatory cash
+  const t45=document.getElementById('tb45');
+  appendRow(t45,'B. Under RCM and ECO u/s 9(5)','Tax',hv(rcm_eco),'mand-row','i1');
+  appendRow(t45,'C. Interest u/s 50','Interest',hv(interest),'mand-row','i1');
+  appendRow(t45,'D. Late Fee u/s 47 (CGST / SGST only)','Late Fees',[null,latefee.c,latefee.s,null],'mand-row','i1');
+  appendRow(t45,'Total Mandatory Cash','',hv(mandCash),'highlight-row');
+
+  // 4.6 Cash required
+  const t46=document.getElementById('tb46');
+  appendRow(t46,'FCM Tax (Balance after ITC)','Tax',hv(fcmCash),'','i1');
+  appendRow(t46,'Mandatory Cash (RCM / ECO / Interest / Late Fee)','',hv(mandCash),'','i1');
+  appendRow(t46,'Total Cash Required','',hv(totalCash),'highlight-row');
+  appendRow(t46,'Actual Cash Balance — Opening ECL (all sub-heads)','',hv(openECL));
+  appendRow(t46,'Additional Cash to be Deposited in ECL','',hv(addCash),'carry-row');
+
+  // 4.7 Carry forward
+  const t47=document.getElementById('tb47');
+  appendRow(t47,'Electronic Credit Ledger — Closing Balance','',hv(carry),'carry-row');
+  // Surplus ECL cash
+  const surpECL={};H.forEach(h=>{surpECL[h]=Math.max(0,openECL[h]-totalCash[h])});
+  appendRow(t47,'Electronic Cash Ledger — Surplus (Closing)','',hv(surpECL),'carry-row');
+
+  // Equalization note
+  const diff=Math.abs(carry.c-carry.s);
+  const box=document.getElementById('eq-box');
+  if(carry.c>0||carry.s>0){
+    if(diff<1){
+      box.innerHTML=`<div class="note-box note-ok">✓ <strong>CGST / SGST carry-forward balanced</strong> — CGST: ${fmtR(carry.c)}, SGST/UTGST: ${fmtR(carry.s)}. Optimal ledger parity achieved.</div>`;
+    } else {
+      const lo=carry.c<=carry.s?'CGST':'SGST/UTGST';const hi=carry.c<=carry.s?'SGST/UTGST':'CGST';
+      box.innerHTML=`<div class="note-box note-warn">⚡ <strong>CGST / SGST equalization:</strong> CGST carry = ${fmtR(carry.c)}, SGST/UTGST carry = ${fmtR(carry.s)} (gap: ${fmtR(diff)}). Residual IGST ITC and cross-head offsets applied to <strong>${lo}</strong> first. In future periods, route ${hi} ITC towards IGST liability to further equalise ledger balances.</div>`;
+    }
+  } else { box.innerHTML=''; }
+
+  document.getElementById('s4').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+const var_red='var(--red)',var_amber='var(--amber)';
+
+// ── EXCEL DOWNLOAD ──
+function dlExcel(){
+  if(!Object.keys(LAST).length){alert('Please calculate first.');return}
+  const R=LAST;
+  const N=v=>v||0;
+  const hv=o=>[N(o.i),N(o.c),N(o.s),N(o.e),H.reduce((a,h)=>a+N(o[h]),0)];
+  const off=R.off;
+  const iu={i:(off.ii+off.ci+off.si),c:(off.ic+off.cc),s:(off.is+off.ss),e:(off.ie+off.ee)};
+  const gstin=document.getElementById('ent_gstin').value||'';
+  const entName=document.getElementById('ent_name').value||'';
+  const period=document.getElementById('ent_period').value||'';
+  const prep=document.getElementById('sig_prep_name').value||'';
+  const prepDesig=document.getElementById('sig_prep_desig').value||'';
+  const rev=document.getElementById('sig_rev_name').value||'';
+  const revDesig=document.getElementById('sig_rev_desig').value||'';
+
+  // ── Style palette ──
+  const wb_obj=XLSX.utils.book_new();
+
+  const fntBase={name:'Arial',sz:10};
+  const fntBold={name:'Arial',sz:10,bold:true};
+  const fntSm={name:'Arial',sz:9};
+  const fntSmBold={name:'Arial',sz:9,bold:true};
+  const fntTitle={name:'Arial',sz:13,bold:true,color:{rgb:'FFFFFF'}};
+  const fntEnt={name:'Arial',sz:9,italic:true,color:{rgb:'4A5568'}};
+  const fntHdr={name:'Arial',sz:9,bold:true,color:{rgb:'1E293B'}};
+  const fntSecHdr={name:'Arial',sz:9,bold:true,color:{rgb:'FFFFFF'}};
+  const fntSubHdr={name:'Arial',sz:9,bold:true,color:{rgb:'374151'}};
+  const fntTotal={name:'Arial',sz:10,bold:true,color:{rgb:'1E3A8A'}};
+  const fntHighlight={name:'Arial',sz:10,bold:true,color:{rgb:'1E3A8A'}};
+  const fntRed={name:'Arial',sz:10,bold:true,color:{rgb:'991B1B'}};
+  const fntAmber={name:'Arial',sz:10,bold:true,color:{rgb:'92400E'}};
+  const fntGreen={name:'Arial',sz:10,bold:true,color:{rgb:'065F46'}};
+  const fntMono={name:'Courier New',sz:10};
+  const fntMonoBold={name:'Courier New',sz:10,bold:true};
+
+  const fillTitle={patternType:'solid',fgColor:{rgb:'1E3A8A'}};
+  const fillEnt={patternType:'solid',fgColor:{rgb:'F1F5F9'}};
+  const fillSecHdr={patternType:'solid',fgColor:{rgb:'1F2937'}};
+  const fillSubHdr={patternType:'solid',fgColor:{rgb:'E5E7EB'}};
+  const fillColHdr={patternType:'solid',fgColor:{rgb:'F8FAFC'}};
+  const fillTotal={patternType:'solid',fgColor:{rgb:'EFF6FF'}};
+  const fillHighlight={patternType:'solid',fgColor:{rgb:'DBEAFE'}};
+  const fillRed={patternType:'solid',fgColor:{rgb:'FEF2F2'}};
+  const fillAmber={patternType:'solid',fgColor:{rgb:'FFFBEB'}};
+  const fillGreen={patternType:'solid',fgColor:{rgb:'ECFDF5'}};
+  const fillNone={patternType:'none'};
+
+  const borderThin={style:'thin',color:{rgb:'D1D5DB'}};
+  const borderMed={style:'medium',color:{rgb:'9CA3AF'}};
+  const borderThick={style:'medium',color:{rgb:'1E3A8A'}};
+  const bAll={top:borderThin,bottom:borderThin,left:borderThin,right:borderThin};
+  const bAllMed={top:borderMed,bottom:borderMed,left:borderMed,right:borderMed};
+  const bHighlight={top:borderThick,bottom:borderThick,left:borderMed,right:borderMed};
+
+  const alignL={horizontal:'left',vertical:'center',wrapText:true};
+  const alignR={horizontal:'right',vertical:'center'};
+  const alignC={horizontal:'center',vertical:'center'};
+
+  const numFmt='#,##0.00';
+  const numFmtDash='#,##0.00;(#,##0.00);"-"';
+
+  function cs(font,fill,alignment,border,numFmt_){
+    const s={font,fill:fill||fillNone,alignment:alignment||alignL};
+    if(border)s.border=border;
+    if(numFmt_)s.numFmt=numFmt_;
+    return s;
+  }
+
+  const S={
+    title:      cs(fntTitle,fillTitle,alignL),
+    ent:        cs(fntEnt,fillEnt,alignL),
+    blank:      cs(fntBase,fillNone,alignL),
+    secHdr:     cs(fntSecHdr,fillSecHdr,alignL,bAllMed),
+    secHdrNum:  cs({...fntSecHdr,color:{rgb:'9CA3AF'}},fillSecHdr,alignR,bAllMed),
+    subHdr:     cs(fntSubHdr,fillSubHdr,alignL,bAll),
+    colHdr:     cs(fntHdr,fillColHdr,alignC,bAll),
+    colHdrR:    cs(fntHdr,fillColHdr,alignR,bAll),
+    data:       cs(fntBase,fillNone,alignL,bAll),
+    dataR:      cs(fntMono,fillNone,alignR,bAll,numFmtDash),
+    dataInd:    cs({...fntBase,color:{rgb:'6B7280'}},fillNone,alignL,bAll),
+    dataIndR:   cs(fntMono,fillNone,alignR,bAll,numFmtDash),
+    total:      cs(fntBold,fillTotal,alignL,bAll),
+    totalR:     cs(fntMonoBold,fillTotal,alignR,bAllMed,numFmtDash),
+    highlight:  cs(fntHighlight,fillHighlight,alignL,bHighlight),
+    highlightR: cs({...fntMonoBold,color:{rgb:'1E3A8A'}},fillHighlight,alignR,bHighlight,numFmtDash),
+    red:        cs({...fntBase,color:{rgb:'991B1B'}},fillRed,alignL,bAll),
+    redR:       cs({...fntMono,color:{rgb:'991B1B'}},fillRed,alignR,bAll,numFmtDash),
+    redTotal:   cs(fntRed,fillRed,alignL,bAllMed),
+    redTotalR:  cs({...fntMonoBold,color:{rgb:'991B1B'}},fillRed,alignR,bAllMed,numFmtDash),
+    amber:      cs(fntAmber,fillAmber,alignL,bAll),
+    amberR:     cs({...fntMonoBold,color:{rgb:'92400E'}},fillAmber,alignR,bAllMed,numFmtDash),
+    green:      cs(fntGreen,fillGreen,alignL,bAll),
+    greenR:     cs({...fntMonoBold,color:{rgb:'065F46'}},fillGreen,alignR,bAllMed,numFmtDash),
+    sig:        cs({...fntBase,color:{rgb:'374151'}},fillNone,alignL),
+    sigLine:    cs({...fntSmBold,color:{rgb:'374151'}},{patternType:'solid',fgColor:{rgb:'F8FAFC'}},alignL,{bottom:{style:'medium',color:{rgb:'374151'}}}),
+  };
+
+  // ── Worksheet builder ──
+  function buildSheet(rows_spec){
+    // rows_spec: array of {cells:[{v,s},...], height?}
+    const ws={};
+    let maxCol=0;
+    rows_spec.forEach((row,ri)=>{
+      if(row.height) ws['!rows']=(ws['!rows']||[]);
+      if(row.height){ws['!rows'][ri]={hpt:row.height}}
+      row.cells.forEach((cell,ci)=>{
+        const addr=XLSX.utils.encode_cell({r:ri,c:ci});
+        ws[addr]={v:cell.v==null?'':cell.v, t:typeof cell.v==='number'?'n':'s', s:cell.s||S.data};
+        if(typeof cell.v==='number') ws[addr].t='n';
+        maxCol=Math.max(maxCol,ci);
+      });
+    });
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows_spec.length-1,c:maxCol}});
+    return ws;
+  }
+
+  // helper: merge row - one label cell + 6 blanks styled same
+  function titleRow(text,height){
+    return {height:height||22,cells:[
+      {v:text,s:S.title},
+      ...Array(COLS-1).fill({v:'',s:S.title})
+    ]};
+  }
+  function entRow(text){
+    return {height:16,cells:[{v:text,s:S.ent},...Array(COLS-1).fill({v:'',s:S.ent})]};
+  }
+  function blankRow(){
+    return {height:6,cells:Array(COLS).fill({v:'',s:S.blank})};
+  }
+  function secHdrRow(text){
+    return {height:18,cells:[
+      {v:text,s:S.secHdr},
+      ...Array(COLS-1).fill({v:'',s:S.secHdr})
+    ]};
+  }
+  function subHdrRow(text){
+    return {height:15,cells:[{v:text,s:S.subHdr},...Array(COLS-1).fill({v:'',s:S.subHdr})]};
+  }
+  // 7-col header: Description, Sub-Head, IGST, CGST, SGST/UTGST, Cess, Total
+  function colHdrRow7(){
+    return {height:16,cells:[
+      {v:'Description',s:S.colHdr},{v:'Sub-Head',s:S.colHdr},
+      {v:'IGST (₹)',s:S.colHdrR},{v:'CGST (₹)',s:S.colHdrR},
+      {v:'SGST / UTGST (₹)',s:S.colHdrR},{v:'Cess (₹)',s:S.colHdrR},{v:'Total (₹)',s:S.colHdrR}
+    ]};
+  }
+  // 6-col header: Description, IGST, CGST, SGST, Cess, Total
+  function colHdrRow6(){
+    return {height:16,cells:[
+      {v:'Description',s:S.colHdr},
+      {v:'IGST (₹)',s:S.colHdrR},{v:'CGST (₹)',s:S.colHdrR},
+      {v:'SGST / UTGST (₹)',s:S.colHdrR},{v:'Cess (₹)',s:S.colHdrR},{v:'Total (₹)',s:S.colHdrR},
+      {v:'',s:S.colHdr}
+    ]};
+  }
+
+  // Data row with sub-head (7 cols): desc, sub, i, c, s, e, total
+  function dr7(desc,sub,vals,style,styleR){
+    const sl=style||S.data; const sr=styleR||S.dataR;
+    const nums=vals.map(v=>({v:v||0,s:sr}));
+    const tot=vals.reduce((a,v)=>a+(v||0),0);
+    return {height:14,cells:[{v:desc,s:sl},{v:sub||'',s:sl},...nums,{v:tot,s:sr}]};
+  }
+  // Data row 6-col (desc + 4 nums + total + blank)
+  function dr6(desc,vals,style,styleR){
+    const sl=style||S.data; const sr=styleR||S.dataR;
+    const nums=vals.map(v=>({v:v||0,s:sr}));
+    const tot=vals.reduce((a,v)=>a+(v||0),0);
+    return {height:14,cells:[{v:desc,s:sl},...nums,{v:tot,s:sr},{v:'',s:sl}]};
+  }
+  // Indent helpers
+  function dr7i(desc,sub,vals,style,styleR){return dr7('  '+desc,sub,vals,style||S.dataInd,styleR||S.dataIndR)}
+  function dr6i(desc,vals,style,styleR){return dr6('  '+desc,vals,style||S.dataInd,styleR||S.dataIndR)}
+
+  function totalRow7(desc,sub,vals){return dr7(desc,sub,vals,S.total,S.totalR)}
+  function highlightRow7(desc,vals){return dr7(desc,'',vals,S.highlight,S.highlightR)}
+  function highlightRow6(desc,vals){return dr6(desc,vals,S.highlight,S.highlightR)}
+  function redRow7(desc,sub,vals){return dr7(desc,sub,vals,S.red,S.redR)}
+  function redTotalRow6(desc,vals){return dr6(desc,vals,S.redTotal,S.redTotalR)}
+  function amberRow6(desc,vals){return dr6(desc,vals,S.amber,S.amberR)}
+  function greenRow7(desc,sub,vals){return dr7(desc,sub,vals,S.green,S.greenR)}
+  function greenRow6(desc,vals){return dr6(desc,vals,S.green,S.greenR)}
+
+  const ia_rows=ITC_A.map((r,i)=>{
+    const lbls=['(1) Import of goods','(2) Import of services','(3) Inward supplies — RCM (other)','(4) Inward supplies from ISD','(5) All other ITC'];
+    return dr6i(lbls[i],[N(gv(`${r}_i`)),N(gv(`${r}_c`)),N(gv(`${r}_s`)),N(gv(`${r}_e`))]);
+  });
+  const ibp_rows=ITC_BP.map((r,i)=>{
+    const lbls=['(1) Rule 38 — NBFC 50%','(2) Rule 42 — Common credit (inputs)','(3) Rule 43 — Common credit (capital goods)','(4) Sec 17(5) — Blocked credit','(5) Any other'];
+    return dr6i(lbls[i],[N(gv(`${r}_i`)),N(gv(`${r}_c`)),N(gv(`${r}_s`)),N(gv(`${r}_e`))]);
+  });
+  const ibt_rows=ITC_BT.map((r,i)=>{
+    const lbls=['(1) Rule 37 — Non-payment within 180 days','(2) Rule 37A — Supplier non-compliance','(3) Sec 16(2)(b) — Goods/Services not received','(4) Sec 39 — ITC reversed by ISD','(5) Any other'];
+    return dr6i(lbls[i],[N(gv(`${r}_i`)),N(gv(`${r}_c`)),N(gv(`${r}_s`)),N(gv(`${r}_e`))]);
+  });
+
+  // ── SHEET 1: Input Data ──
+  const s1=buildSheet([
+    titleRow('GST Optimal Offset Calculator — Section 49, CGST Act 2017',26),
+    entRow(`GSTIN: ${gstin}   |   Entity: ${entName}   |   Period: ${period}`),
+    blankRow(),
+
+    secHdrRow('SECTION 1 — ELECTRONIC LEDGER BALANCES (OPENING)'),
+    colHdrRow7(),
+    dr7('Electronic Cash Ledger','Tax',hv(R.ecl.tax)),
+    dr7('','Interest',hv(R.ecl.int)),
+    dr7('','Late Fees',hv(R.ecl.lf)),
+    dr7('Electronic Credit Ledger','Tax',hv(R.ecr)),
+    greenRow7('Negative Liability Ledger (NLL)','Tax',hv(R.nll)),
+    blankRow(),
+
+    secHdrRow('SECTION 2 — OUTWARD GST LIABILITY   (GSTR-3B Table 3.1)'),
+    colHdrRow6(),
+    dr6('(a) FCM — Other than zero rated',[N(gv('la_i')),N(gv('la_c')),N(gv('la_s')),N(gv('la_e'))]),
+    dr6('(b) Zero Rated (IGST / Cess only)',[N(gv('lb_i')),0,0,N(gv('lb_e'))]),
+    redRow7('(c) RCM — Reverse Charge  [CASH ONLY]','',hv({i:gv('lc_i'),c:gv('lc_c'),s:gv('lc_s'),e:gv('lc_e')})),
+    redRow7('(d) E-Commerce Operator u/s 9(5)  [CASH ONLY]','',hv({i:gv('ld_i'),c:gv('ld_c'),s:gv('ld_s'),e:gv('ld_e')})),
+    redRow7('Interest @ 18%  [CASH ONLY]','',hv(R.interest)),
+    redRow7('Late Fee  [CASH ONLY — CGST / SGST only]','',[0,N(R.latefee.c),N(R.latefee.s),0]),
+    blankRow(),
+
+    secHdrRow('SECTION 3 — INPUT TAX CREDIT   (GSTR-3B Table 4)'),
+    colHdrRow6(),
+    subHdrRow('(A) ITC Available — whether in full or part'),
+    ...ia_rows,
+    highlightRow6('Total ITC Available (A)',hv(R.itcA)),
+    blankRow(),
+    subHdrRow('(B) ITC Reversible — I. Permanent Reversal'),
+    ...ibp_rows,
+    totalRow7('Sub-total — I. Permanent Reversal','',hv({i:ITC_BP.reduce((a,r)=>a+gv(`${r}_i`),0),c:ITC_BP.reduce((a,r)=>a+gv(`${r}_c`),0),s:ITC_BP.reduce((a,r)=>a+gv(`${r}_s`),0),e:ITC_BP.reduce((a,r)=>a+gv(`${r}_e`),0)})),
+    subHdrRow('(B) ITC Reversible — II. Temporary Reversal'),
+    ...ibt_rows,
+    totalRow7('Sub-total — II. Temporary Reversal','',hv({i:ITC_BT.reduce((a,r)=>a+gv(`${r}_i`),0),c:ITC_BT.reduce((a,r)=>a+gv(`${r}_c`),0),s:ITC_BT.reduce((a,r)=>a+gv(`${r}_s`),0),e:ITC_BT.reduce((a,r)=>a+gv(`${r}_e`),0)})),
+    highlightRow6('Total ITC Reversible (I + II)',hv(R.itcB)),
+    blankRow(),
+
+    {height:14,cells:[
+      {v:`Prepared By: ${prep}${prepDesig?' ('+prepDesig+')':''}`,s:S.sig},
+      {v:'',s:S.sig},{v:'',s:S.sig},
+      {v:`Reviewed By: ${rev}${revDesig?' ('+revDesig+')':''}`,s:S.sig},
+      {v:'',s:S.sig},{v:'',s:S.sig},{v:'',s:S.sig}
+    ]},
+    {height:14,cells:Array(COLS).fill({v:'',s:S.sigLine})},
+  ]);
+  s1['!cols']=[{wch:46},{wch:13},{wch:14},{wch:14},{wch:16},{wch:12},{wch:14}];
+  s1['!rows']=s1['!rows']||[];
+  XLSX.utils.book_append_sheet(wb_obj,s1,'Input Data');
+
+  // ── SHEET 2: Payment of Tax ──
+  const s2=buildSheet([
+    titleRow('GST Optimal Offset Calculator — Payment of Tax   (Section 49, CGST Act 2017)',26),
+    entRow(`GSTIN: ${gstin}   |   Entity: ${entName}   |   Period: ${period}`),
+    blankRow(),
+
+    secHdrRow('4.1   OPENING BALANCES'),
+    colHdrRow7(),
+    dr7('Electronic Cash Ledger','Tax',hv(R.ecl.tax)),
+    dr7('','Interest',hv(R.ecl.int)),
+    dr7('','Late Fees',hv(R.ecl.lf)),
+    dr7('Electronic Credit Ledger','Tax',hv(R.ecr)),
+    greenRow7('Negative Liability Ledger (NLL)','Tax',hv(R.nll)),
+    blankRow(),
+
+    secHdrRow('4.2   NET ITC AVAILABLE FOR THE PERIOD'),
+    colHdrRow6(),
+    dr6i('A. ITC Available (Gross)',hv(R.itcA)),
+    dr6i('B. ITC Reversible (I + II)',hv(R.itcB)),
+    highlightRow6('Net ITC Available  [A − B + Opening Credit Ledger]',hv(R.netITC)),
+    blankRow(),
+
+    secHdrRow('4.3   NET OUTWARD GST LIABILITY'),
+    colHdrRow6(),
+    dr6i('I. Gross FCM Liability (before NLL)',hv(R.fcm)),
+    dr6i('Less: Negative Liability Ledger (NLL)',hv(R.nll)),
+    highlightRow6('II. Net FCM Liability (after NLL)',hv(R.fcmNLL)),
+    blankRow(),
+
+    secHdrRow('4.4   OFFSET THROUGH ITC   [Section 49(5) Sequence]'),
+    colHdrRow6(),
+    subHdrRow('Applied to IGST Liability'),
+    dr6i('Paid via IGST ITC',[off.ii,0,0,0]),
+    dr6i('Paid via CGST ITC (after IGST ITC exhausted)',[off.ci,0,0,0]),
+    dr6i('Paid via SGST / UTGST ITC (after IGST ITC exhausted)',[off.si,0,0,0]),
+    subHdrRow('Applied to CGST Liability'),
+    dr6i('Paid via IGST ITC',[0,off.ic,0,0]),
+    dr6i('Paid via CGST ITC',[0,off.cc,0,0]),
+    subHdrRow('Applied to SGST / UTGST Liability'),
+    dr6i('Paid via IGST ITC',[0,0,off.is,0]),
+    dr6i('Paid via SGST / UTGST ITC',[0,0,off.ss,0]),
+    subHdrRow('Applied to Cess Liability'),
+    dr6i('Paid via Cess ITC',[0,0,0,off.ee]),
+    highlightRow6('Total ITC Offset',hv(iu)),
+    redTotalRow6('Balance FCM Liability after ITC (payable in cash)',hv(R.fcmCash)),
+    blankRow(),
+
+    secHdrRow('4.5   OFFSET THROUGH CASH — MANDATORY'),
+    colHdrRow7(),
+    redRow7('B. Under RCM and ECO u/s 9(5)','Tax',hv(R.rcm_eco)),
+    redRow7('C. Interest u/s 50','Interest',hv(R.interest)),
+    redRow7('D. Late Fee u/s 47  (CGST / SGST only)','Late Fees',[0,N(R.latefee.c),N(R.latefee.s),0]),
+    redTotalRow6('Total Mandatory Cash',hv(R.mandCash)),
+    blankRow(),
+
+    secHdrRow('4.6   CASH REQUIRED — ELECTRONIC CASH LEDGER'),
+    colHdrRow6(),
+    dr6i('FCM Tax (balance after ITC offset)',hv(R.fcmCash)),
+    dr6i('Mandatory Cash (RCM / ECO / Interest / Late Fee)',hv(R.mandCash)),
+    redTotalRow6('Total Cash Required',hv(R.totalCash)),
+    dr6('Actual Cash Balance — Opening ECL (all sub-heads)',hv(R.openECL)),
+    amberRow6('Additional Cash to be Deposited in ECL',hv(R.addCash)),
+    blankRow(),
+
+    secHdrRow('4.7   CASH & ITC CARRY FORWARD TO NEXT PERIOD'),
+    colHdrRow6(),
+    amberRow6('Electronic Credit Ledger — Closing Balance',hv(R.carry)),
+    amberRow6('Electronic Cash Ledger — Surplus (Closing)',hv({i:Math.max(0,R.openECL.i-R.totalCash.i),c:Math.max(0,R.openECL.c-R.totalCash.c),s:Math.max(0,R.openECL.s-R.totalCash.s),e:Math.max(0,R.openECL.e-R.totalCash.e)})),
+    blankRow(),
+
+    {height:14,cells:[
+      {v:`Prepared By: ${prep}${prepDesig?' ('+prepDesig+')':''}`,s:S.sig},
+      {v:'',s:S.sig},{v:'',s:S.sig},
+      {v:`Reviewed By: ${rev}${revDesig?' ('+revDesig+')':''}`,s:S.sig},
+      {v:'',s:S.sig},{v:'',s:S.sig},{v:'',s:S.sig}
+    ]},
+    {height:14,cells:Array(COLS).fill({v:'',s:S.sigLine})},
+  ]);
+  s2['!cols']=[{wch:50},{wch:13},{wch:14},{wch:14},{wch:16},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb_obj,s2,'Payment of Tax');
+
+  const d=new Date();
+  const ds=`${d.getDate().toString().padStart(2,'0')}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getFullYear()}`;
+  XLSX.writeFile(wb_obj,`GST_Offset_${period.replace(/[\s/\\]+/g,'_')||ds}.xlsx`);
+}
+
+// ── SAMPLE ──
+function loadSample(){
+  resetAll(true);
+  const d={
+    ent_gstin:'29ABCDE1234F1Z5',ent_name:'Sample Pvt. Ltd.',ent_period:'April 2025',
+    ecl_tax_i:5000,ecl_tax_c:3000,ecl_tax_s:3000,ecl_tax_e:500,
+    ecr_i:20000,ecr_c:28000,ecr_s:12000,ecr_e:2000,
+    nll_c:3000,nll_s:3000,
+    la_i:125000,la_c:58000,la_s:58000,la_e:8000,
+    lb_i:12000,lb_e:1200,
+    lc_i:12000,lc_c:6000,lc_s:6000,
+    lint_i:800,lint_c:400,lint_s:400,
+    llf_c:250,llf_s:250,
+    ia1_i:35000,ia1_e:3500,ia2_i:10000,
+    ia3_i:12000,ia3_c:6000,ia3_s:6000,
+    ia4_i:8000,ia4_c:4000,ia4_s:4000,
+    ia5_i:50000,ia5_c:22000,ia5_s:22000,ia5_e:3500,
+    ib_p2_i:2000,ib_p2_c:1000,ib_p2_s:1000,
+    sig_prep_name:'Ravi Kumar',sig_prep_desig:'Manager — Indirect Tax',
+    sig_rev_name:'Priya Sharma',sig_rev_desig:'Partner / CFO',
+  };
+  Object.entries(d).forEach(([k,v])=>{const e=document.getElementById(k);if(e&&!e.disabled)e.value=v||''});
+  live();
+}
+
+function resetAll(silent){
+  document.querySelectorAll('input[type=number],input[type=text]').forEach(e=>{if(!e.disabled)e.value=''});
+  LAST={};live();
+  document.getElementById('pot-empty').style.display='';
+  ['tb41','tb42','tb43','tb44','tb45','tb46','tb47'].forEach(id=>{
+    const e=document.getElementById(id);if(e)e.innerHTML='';
+  });
+  document.getElementById('eq-box').innerHTML='';
+  ['sm1','sm2','sm3','sm4','sm5','sm6'].forEach(id=>{
+    const e=document.getElementById(id);e.textContent='—';e.style.color='';
+  });
+  if(!silent)window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Nav scroll
+window.addEventListener('scroll',()=>{
+  const ids=['entity','s1','s2','s3','s4'];
+  const links=document.querySelectorAll('.section-nav a');
+  let active=0;
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=100)active=i});
+  links.forEach((l,i)=>l.classList.toggle('on',i===active));
+},{passive:true});
+
+// Keep nav stuck just below header
+function fixNavTop(){
+  const h=document.querySelector('header');
+  const nav=document.querySelector('.section-nav');
+  if(h&&nav) nav.style.top=h.offsetHeight+'px';
+}
+fixNavTop();
+window.addEventListener('resize',fixNavTop);
+
+live();
+</script>
+</body>
+</html>
